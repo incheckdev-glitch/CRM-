@@ -1,5 +1,9 @@
 import { FormEvent, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import {
+  supabase,
+  supabaseConfigured,
+  supabaseConfigurationMessage,
+} from '../lib/supabase'
 import { ArrowRight, Building2, CheckCircle2, LockKeyhole } from 'lucide-react'
 
 export default function LoginPage() {
@@ -9,10 +13,31 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   const submit = async (e: FormEvent) => {
-    e.preventDefault(); setLoading(true); setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(error.message)
-    setLoading(false)
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    if (!supabaseConfigured) {
+      setError(supabaseConfigurationMessage)
+      setLoading(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setError(error.message)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : ''
+      if (message.toLowerCase().includes('failed to fetch')) {
+        setError(
+          'Unable to reach Supabase. Verify the Supabase project URL and browser key in Vercel Environment Variables, then redeploy the project.',
+        )
+      } else {
+        setError('Unable to sign in right now. Please try again or contact the platform administrator.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return <div className="login-shell">
